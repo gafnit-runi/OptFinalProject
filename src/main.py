@@ -19,16 +19,33 @@ def calculate_returns(data):
 
 
 def calculate_covariance_matrix(returns):
-    return np.cov(returns, rowvar=False)
+    return np.cov(returns)
 
 
 def solve_portfolio_optimization(returns, covariance_matrix, target_return):
-    pass
+    num_assets = len(returns)
+
+    # Convert data to cvxopt matrices
+    Q = matrix(covariance_matrix)
+    r = matrix(np.zeros(num_assets))
+    A = matrix(np.ones(num_assets)).T
+    b = matrix(1.0)
+    G = matrix(- np.eye(num_assets))
+    h = matrix(np.zeros(num_assets))
+
+    # Solve the quadratic program
+    sol = solvers.qp(Q, r, G, h, A, b)
+    if sol['status'] == 'optimal':
+        weights = np.array(sol['x']).flatten()
+        return weights
+    else:
+        raise ValueError("Failed to find optimal solution.")
 
 
 if __name__ == '__main__':
     # List of filenames for the CSV files
-    filenames = ['../data/AAPL_6M.csv', '../data/AMZN_6M.csv', '../data/META_6M.csv', '../data/MSFT_6M.csv', '../data/SBUX_6M.csv']
+    filenames = ['../data/AAPL_6M.csv', '../data/AMZN_6M.csv', '../data/META_6M.csv', '../data/MSFT_6M.csv',
+                 '../data/SBUX_6M.csv']
 
     # Read data from CSV files and calculate mean and variance for each stock
     returns_list = []
