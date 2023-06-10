@@ -1,46 +1,5 @@
-import csv
-import numpy as np
-from cvxopt import matrix, solvers
-
-
-def read_csv_file(filename):
-    data = []
-    with open(filename, 'r') as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            data.append(row)
-    return data
-
-
-def calculate_returns(data):
-    close_prices = [float(row['Close/Last'].replace('$', '')) for row in data]
-    returns = np.diff(close_prices) / close_prices[:-1]
-    return returns
-
-
-def calculate_covariance_matrix(returns):
-    return np.cov(returns)
-
-
-def solve_portfolio_optimization(returns, covariance_matrix):
-    num_assets = len(returns)
-
-    # Convert data to cvxopt matrices
-    Q = matrix(covariance_matrix)
-    r = matrix(np.zeros(num_assets))
-    A = matrix(np.ones(num_assets)).T
-    b = matrix(1.0)
-    G = matrix(- np.eye(num_assets))
-    h = matrix(np.zeros(num_assets))
-
-    # Solve the quadratic program
-    sol = solvers.qp(Q, r, G, h, A, b)
-    if sol['status'] == 'optimal':
-        weights = np.array(sol['x']).flatten()
-        return weights
-    else:
-        raise ValueError("Failed to find optimal solution.")
-
+from solver import solve_portfolio_optimization
+from utils import *
 
 if __name__ == '__main__':
     stock_names = ['AAPL', 'AMZN', 'META', 'MSFT', 'SBUX']
