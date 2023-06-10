@@ -22,7 +22,7 @@ def calculate_covariance_matrix(returns):
     return np.cov(returns)
 
 
-def solve_portfolio_optimization(returns, covariance_matrix, target_return):
+def solve_portfolio_optimization(returns, covariance_matrix):
     num_assets = len(returns)
 
     # Convert data to cvxopt matrices
@@ -43,6 +43,7 @@ def solve_portfolio_optimization(returns, covariance_matrix, target_return):
 
 
 if __name__ == '__main__':
+    stock_names = ['AAPL', 'AMZN', 'META', 'MSFT', 'SBUX']
     # List of filenames for the CSV files
     filenames = ['../data/AAPL_6M.csv', '../data/AMZN_6M.csv', '../data/META_6M.csv', '../data/MSFT_6M.csv',
                  '../data/SBUX_6M.csv']
@@ -55,9 +56,9 @@ if __name__ == '__main__':
         returns_list.append(returns)
 
     covariance_matrix = calculate_covariance_matrix(returns_list)
-    target_return = 0.05  # Set your desired target return here
 
     # Solve portfolio optimization
-    weights = solve_portfolio_optimization(returns_list, covariance_matrix, target_return)
+    weights = solve_portfolio_optimization(returns_list, covariance_matrix)
 
-    print("Optimal Weights:", weights)
+    for stock, w in zip(stock_names, weights):
+        print(f'stock: {stock}, weight: {w}')
