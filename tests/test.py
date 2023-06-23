@@ -1,6 +1,10 @@
 import unittest
+from datetime import datetime, timedelta
 from src.solver import solve_portfolio_optimization
 from src.utils import *
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+from datetime import datetime
 
 STOCK_NAMES = ['AAPL', 'AMZN', 'META', 'MSFT', 'SBUX']
 FILES_6M = ['../data/AAPL_6M.csv', '../data/AMZN_6M.csv', '../data/META_6M.csv', '../data/MSFT_6M.csv',
@@ -46,7 +50,8 @@ class TestOptimizerMethods(unittest.TestCase):
         for stock, w in zip(STOCK_NAMES, weights):
             print(f'stock: {stock}, weight: {w}, check_time: 5Y')
 
-    def calculate_investment_return(self, weights, total_investment_amount, purchase_stocks_prices, current_stocks_prices):
+    def calculate_investment_return(self, weights, total_investment_amount, purchase_stocks_prices,
+                                    current_stocks_prices):
         """
         Calculates a past investment return. The investment occurred at a past purchase date by investing
         total_investment_amount of money split by weights.
@@ -101,7 +106,8 @@ class TestOptimizerMethods(unittest.TestCase):
 
         purchase_stocks_prices = self.stock_prices_by_date(FILES_5Y, end_date)
         current_stocks_prices = self.stock_prices_by_date(FILES_5Y, current_date)
-        investment_return = self.calculate_investment_return(weights, investment_amount, purchase_stocks_prices, current_stocks_prices)
+        investment_return = self.calculate_investment_return(weights, investment_amount, purchase_stocks_prices,
+                                                             current_stocks_prices)
 
         return investment_return
 
@@ -113,13 +119,117 @@ class TestOptimizerMethods(unittest.TestCase):
         :return:
         """
         investment_amount = 10000
-        investment_return = self.solver_solution_return_time_window(start_date='12/12/2022', end_date='04/12/2023', current_date='06/09/2023', investment_amount=investment_amount)
+        investment_return = self.solver_solution_return_time_window(start_date='12/12/2022', end_date='04/12/2023',
+                                                                    current_date='06/09/2023',
+                                                                    investment_amount=investment_amount)
 
         print(f'investment_return: {investment_return}')
 
-        investment_return = self.solver_solution_return_time_window(start_date='01/01/2020', end_date='01/06/2020', current_date='06/09/2023', investment_amount=investment_amount)
+        investment_return = self.solver_solution_return_time_window(start_date='01/01/2020', end_date='01/06/2020',
+                                                                    current_date='06/09/2023',
+                                                                    investment_amount=investment_amount)
 
         print(f'investment_return: {investment_return}')
+
+    def plot_weights_dates_results(self, weights_by_window, window_type='location'):
+        yaxis = []
+        weights_AAPL = []
+        weights_AMZN = []
+        weights_META = []
+        weights_MSFT = []
+        weights_SBUX = []
+        for ws, y in weights_by_window:
+            yaxis.append(y)
+            for stock, w in zip(STOCK_NAMES, ws):
+                if stock == 'AAPL':
+                    weights_AAPL.append(w)
+                if stock == 'AMZN':
+                    weights_AMZN.append(w)
+                if stock == 'META':
+                    weights_META.append(w)
+                if stock == 'MSFT':
+                    weights_MSFT.append(w)
+                if stock == 'SBUX':
+                    weights_SBUX.append(w)
+
+        plt.plot(yaxis, weights_AAPL, label='AAPL')
+        plt.plot(yaxis, weights_AMZN, label='AMZN')
+        plt.plot(yaxis, weights_META, label='META')
+        plt.plot(yaxis, weights_MSFT, label='MSFT')
+        plt.plot(yaxis, weights_SBUX, label='SBUX')
+
+        if window_type == 'location':
+            plt.xlabel('Date')
+            plt.ylabel('Stock Weight')
+            plt.title('Stock Weights Over Time')
+            plt.xticks(rotation=45, ha='right')
+
+        if window_type == 'size':
+            plt.xlabel('Window Size')
+            plt.ylabel('Stock Weight')
+            plt.title('Stock Weights By Window Size')
+
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
+
+    def test_solver_window_location(self):
+        """
+        This test runs the solver with multiple window location (shifts the window), where the window size is always the same.
+        :return:
+        """
+
+        start_date_str = "06/11/2018"
+        end_date_str = "06/09/2023"
+        date_format = "%m/%d/%Y"
+        window_size_days = 600
+
+        start_date = datetime.strptime(start_date_str, date_format)
+        end_date = datetime.strptime(end_date_str, date_format)
+
+        window_start = start_date
+
+        weights_by_window_location = []
+
+        while window_start + timedelta(days=window_size_days) <= end_date:
+            window_end = window_start + timedelta(days=window_size_days)
+            window_start_str = window_start.strftime(date_format)
+            window_end_str = window_end.strftime(date_format)
+            weights = self.run_solver(FILES_5Y, slice_data=True, start_date=window_start_str, end_date=window_end_str)
+            weights_by_window_location.append((weights, window_start))
+
+            window_start += timedelta(days=50)
+
+        self.plot_weights_dates_results(weights_by_window_location, window_type='location')
+
+    def test_solver_window_size(self):
+        """
+        This test runs the solver with multiple window sizes, where the current date is always the same.
+        :return:
+        """
+
+        start_date_str = "06/11/2018"
+        end_date_str = "06/09/2023"
+        date_format = "%m/%d/%Y"
+        window_size_days = 10
+
+        start_date = datetime.strptime(start_date_str, date_format)
+        end_date = datetime.strptime(end_date_str, date_format)
+
+        window_start = start_date
+
+        weights_by_window_size = []
+
+        while window_start + timedelta(days=window_size_days) <= end_date:
+            window_end = window_start + timedelta(days=window_size_days)
+            window_start_str = window_start.strftime(date_format)
+            window_end_str = window_end.strftime(date_format)
+            weights = self.run_solver(FILES_5Y, slice_data=True, start_date=window_start_str, end_date=window_end_str)
+            weights_by_window_size.append((weights, window_size_days))
+
+            window_size_days += 50
+
+        self.plot_weights_dates_results(weights_by_window_size, window_type='size')
 
 
 if __name__ == '__main__':
