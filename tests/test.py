@@ -3,14 +3,25 @@ from datetime import datetime, timedelta
 from src.solver import solve_portfolio_optimization
 from src.utils import *
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
+import os
 from datetime import datetime
 
-STOCK_NAMES = ['AAPL', 'AMZN', 'META', 'MSFT', 'SBUX']
-FILES_6M = ['../data/AAPL_6M.csv', '../data/AMZN_6M.csv', '../data/META_6M.csv', '../data/MSFT_6M.csv',
-            '../data/SBUX_6M.csv']
-FILES_5Y = ['../data/AAPL_5Y.csv', '../data/AMZN_5Y.csv', '../data/META_5Y.csv', '../data/MSFT_5Y.csv',
-            '../data/SBUX_5Y.csv']
+STOCK_NAMES = set()
+FILES_6M = set()
+FILES_5Y = set()
+for filename in os.listdir('../data'):
+    STOCK_NAMES.add(filename.split('_')[0])
+    if '6M' in filename:
+        FILES_6M.add(f'../data/{filename}')
+    if '5Y' in filename:
+        FILES_5Y.add(f'../data/{filename}')
+
+STOCK_NAMES = list(STOCK_NAMES)
+FILES_6M = list(FILES_6M)
+FILES_5Y = list(FILES_5Y)
+
+STOCKS_START_DATE = '06/25/2018'
+STOCKS_END_DATE = '06/09/2023'
 
 
 class TestOptimizerMethods(unittest.TestCase):
@@ -21,6 +32,8 @@ class TestOptimizerMethods(unittest.TestCase):
             data = read_csv_file(filename)
             if slice_data:
                 data = slice_data_by_date(data, start_date, end_date)
+                if not data:
+                    print(filename)
             returns = calculate_returns(data)
             returns_list.append(returns)
 
@@ -179,8 +192,8 @@ class TestOptimizerMethods(unittest.TestCase):
         :return:
         """
 
-        start_date_str = "06/11/2018"
-        end_date_str = "06/09/2023"
+        start_date_str = STOCKS_START_DATE
+        end_date_str = STOCKS_END_DATE
         date_format = "%m/%d/%Y"
         window_size_days = 600
 
@@ -208,8 +221,8 @@ class TestOptimizerMethods(unittest.TestCase):
         :return:
         """
 
-        start_date_str = "06/11/2018"
-        end_date_str = "06/09/2023"
+        start_date_str = STOCKS_START_DATE
+        end_date_str = STOCKS_END_DATE
         date_format = "%m/%d/%Y"
         window_size_days = 10
 
