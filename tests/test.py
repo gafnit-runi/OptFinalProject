@@ -175,7 +175,7 @@ class TestOptimizerMethods(unittest.TestCase):
 
     def test_solver_window_location(self):
         """
-        This test runs the solver with multiple window sizes, where the current date is always the same.
+        This test runs the solver with multiple window location (shifts the window), where the window size is always the same.
         :return:
         """
 
