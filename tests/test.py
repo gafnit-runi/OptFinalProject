@@ -54,8 +54,12 @@ for filename in FILES_5Y:
 
 class TestOptimizerMethods(unittest.TestCase):
 
-    def run_solver(self, filenames, slice_data=False, start_date=None, end_date=None):
+    def cost_function(self, P, q, x):
+        return 0.5 * x.T @ P @ x + q.T @ x
+
+    def run_solver(self, filenames, slice_data=False, start_date=None, end_date=None, with_cov_mean=False):
         returns_list = []
+        mean_vec = []
         for filename in filenames:
             data = read_csv_file(filename)
             if slice_data:
@@ -63,12 +67,17 @@ class TestOptimizerMethods(unittest.TestCase):
                 if not data:
                     print(filename)
             returns = calculate_returns(data)
+            mean_vec.append(np.mean(returns))
             returns_list.append(returns)
 
         covariance_matrix = calculate_covariance_matrix(returns_list)
 
         # Solve portfolio optimization
-        weights = solve_portfolio_optimization(returns_list, covariance_matrix)
+        weights = solve_portfolio_optimization(returns_list, covariance_matrix, mean_vec)
+
+        if with_cov_mean:
+            return weights, covariance_matrix, mean_vec
+
         return weights
 
     def test_solver_6M(self):
@@ -117,6 +126,53 @@ class TestOptimizerMethods(unittest.TestCase):
         investment_return = (portfolio_value - total_investment_amount) / total_investment_amount
 
         return investment_return
+
+    def test_solver_cost_function(self):
+        window_size_days = 100
+
+        window_end = datetime.strptime(STOCKS_LATEST_DATE, DATE_FORMAT)
+        window_locations = []
+        solver_costs = []
+        uniform_costs = []
+        random_costs = []
+
+        while window_end - timedelta(days=window_size_days) >= datetime.strptime(STOCKS_OLDEST_DATE, DATE_FORMAT):
+            window_start = window_end - timedelta(days=window_size_days)
+            window_start_str = window_start.strftime(DATE_FORMAT)
+            window_end_str = window_end.strftime(DATE_FORMAT)
+            window_locations.append(window_start_str)
+
+            # solver
+            solver_weights, cov, mean_vec = self.run_solver(FILES_5Y, slice_data=True, start_date=window_start_str,
+                                             end_date=window_end_str, with_cov_mean=True)
+            P = 2 * 0.5 * cov
+            q = (-1) * np.array(mean_vec)
+            cost_solver = self.cost_function(P=P, q=q, x=solver_weights)
+            solver_costs.append(cost_solver)
+
+            # uniform
+            uniform_weights = np.ones(len(STOCK_NAMES)) / len(STOCK_NAMES)
+            cost_uniform = self.cost_function(P=P, q=q, x=uniform_weights)
+            uniform_costs.append(cost_uniform)
+
+            # random
+            random_weights = np.random.dirichlet(np.ones(len(STOCK_NAMES)), size=1)[0]
+            cost_random = self.cost_function(P=P, q=q, x=random_weights)
+            random_costs.append(cost_random)
+
+            window_end -= timedelta(days=100)
+
+        plt.plot(window_locations[::-1], solver_costs[::-1], label='Solver', marker='o')
+        plt.plot(window_locations[::-1], uniform_costs[::-1], label='Uniform', marker='o')
+        plt.plot(window_locations[::-1], random_costs[::-1], label='Random', marker='o')
+
+        plt.xlabel('window start date')
+        plt.ylabel('Cost Function Value')
+        plt.xticks(rotation=45, ha='right')
+        plt.title('Cost Function Value vs. Window Location\n100 days invest, 100 days solver window')
+        plt.legend()
+
+        plt.show()
 
     def solver_solution_return_time_window(self, start_date, end_date, current_date, investment_amount):
         """
