@@ -145,7 +145,7 @@ class TestOptimizerMethods(unittest.TestCase):
             # solver
             solver_weights, cov, mean_vec = self.run_solver(FILES_5Y, slice_data=True, start_date=window_start_str,
                                              end_date=window_end_str, with_cov_mean=True)
-            P = 2 * 0.5 * cov
+            P = 2 * 0 * cov
             q = (-1) * np.array(mean_vec)
             cost_solver = self.cost_function(P=P, q=q, x=solver_weights)
             solver_costs.append(cost_solver)
@@ -311,12 +311,26 @@ class TestOptimizerMethods(unittest.TestCase):
         plt.title('Investment Returns Variance vs. Window Sizes')
         plt.legend()
 
+        plt.figure(3)
+        investment_diff = np.array(investment_returns_solver_mean) - np.array(investment_returns_solver_variance)
+        plt.plot(window_sizes, investment_diff, label='Solver Variance', marker='o')
+
+        plt.xlabel('window size (days)')
+        plt.ylabel('investment return variance')
+        plt.title('Investment Returns Variance vs. Window Sizes')
+        plt.legend()
+
         plt.show()
+
+        max_mean = np.max(investment_returns_solver_mean)
+        max_mean_index = investment_returns_solver_mean.index(max_mean)
+        window = window_sizes[max_mean_index]
+        print(f'max_mean_index = {max_mean_index}, window={window}')
 
     def test_solver_by_window_location(self):
         """
         This test runs the solver with multiple window location. In all test we are interested to give the solver a
-        window of 860 days (based on the window test), and to invest for 1 year. In each test we move the solver
+        window of 510 days (based on the window test), and to invest for 1 year. In each test we move the solver
         window by changing the investment date. Next, we check each window solver weights by calculating the
         investment return mean and variance. We compare it with uniform and random investments at the investment
         date.
@@ -326,7 +340,7 @@ class TestOptimizerMethods(unittest.TestCase):
         # invest at least for 1 year
         invest_date = datetime.strptime(STOCKS_LATEST_DATE, DATE_FORMAT) - timedelta(days=365)
         investment_amount = 10000
-        window_size_days = 860
+        window_size_days = 510
 
         window_invest_locations = []
         investment_returns_solver_mean = []
@@ -378,7 +392,7 @@ class TestOptimizerMethods(unittest.TestCase):
         plt.xlabel('window invest date')
         plt.ylabel('investment return mean')
         plt.xticks(rotation=45, ha='right')
-        plt.title('Investment Returns Mean vs. Window Location\n1 year invest, 860 days solver window')
+        plt.title('Investment Returns Mean vs. Window Location\n1 year invest, 510 days solver window')
         plt.legend()
 
         plt.figure(2)
@@ -392,14 +406,30 @@ class TestOptimizerMethods(unittest.TestCase):
         plt.xlabel('window invest date')
         plt.ylabel('investment return variance')
         plt.xticks(rotation=45, ha='right')
-        plt.title('Investment Returns Variance vs. Window Location\n1 year invest, 860 days solver window')
+        plt.title('Investment Returns Variance vs. Window Location\n1 year invest, 510 days solver window')
+        plt.legend()
+
+
+        plt.figure(3)
+        investment_diff = np.array(investment_returns_solver_mean) - np.array(investment_returns_solver_variance)
+        plt.plot(window_invest_locations, investment_diff, label='Solver Variance', marker='o')
+
+        plt.xlabel('window invest date')
+        plt.ylabel('investment return mean - variance')
+        plt.xticks(rotation=45, ha='right')
+        plt.title('Investment Returns (Mean - Variance) vs. Window Location\n1 year invest, 510 days solver window')
         plt.legend()
 
         plt.show()
 
+        max_mean = np.max(investment_returns_solver_mean)
+        max_mean_index = investment_returns_solver_mean.index(max_mean)
+        window = window_invest_locations[max_mean_index]
+        print(f'max_mean_index = {max_mean_index}, window={window}')
+
     def test_solver_investment_return(self):
         """
-        This test runs the solver with a window size of 860 days and invest date 06/22/2022 (based on previous window
+        This test runs the solver with a window size of 510 days and invest date 06/22/2022 (based on previous window
         size and location tests). In this test we assume that we want to invest for at least 1 year. We mark the date
         1 year ago as the investment date. Next, compare the investment return over time along the year. We compare
         it with uniform and random investments at the investment date.
@@ -409,7 +439,7 @@ class TestOptimizerMethods(unittest.TestCase):
         # invest at least for 1 year
         invest_date = datetime.strptime(STOCKS_LATEST_DATE, DATE_FORMAT) - timedelta(days=365)
         investment_amount = 10000
-        window_size_days = 860
+        window_size_days = 510
 
         window_start = invest_date - timedelta(days=window_size_days)
         window_start_str = window_start.strftime(DATE_FORMAT)
@@ -446,7 +476,7 @@ class TestOptimizerMethods(unittest.TestCase):
 
         plt.xlabel('date')
         plt.ylabel('investment return')
-        plt.title('Investment Returns by Date\n1 year invest, 860 days solver window')
+        plt.title('Investment Returns by Date\n1 year invest, 510 days solver window')
         plt.legend()
 
         x_ticks = np.arange(0, len(dates), 50)
@@ -455,6 +485,65 @@ class TestOptimizerMethods(unittest.TestCase):
         plt.xticks(x_ticks, x_labels, rotation=45)
 
         plt.tight_layout()
+        plt.show()
+
+    def test_solver_investment_return_with_update(self):
+        STOCKS_LATEST_DATE = '07/26/2019'
+        invest_date = datetime.strptime(STOCKS_LATEST_DATE, DATE_FORMAT) - timedelta(days=365)
+        investment_amount = 10000
+        window_size_days = 510
+        invest_time = 10
+
+        window_invest_locations = []
+        solver_returns_all = []
+        uniform_returns_all = []
+        random_returns_all = []
+
+        while invest_date + timedelta(days=invest_time) <= datetime.strptime(STOCKS_LATEST_DATE, DATE_FORMAT):
+            window_invest_locations.append(invest_date.strftime(DATE_FORMAT))
+            window_start = invest_date - timedelta(days=window_size_days)
+            window_start_str = window_start.strftime(DATE_FORMAT)
+            window_end_str = invest_date.strftime(DATE_FORMAT)
+            current_date_str = (invest_date + timedelta(days=invest_time)).strftime(DATE_FORMAT)
+
+            purchase_stocks_prices = STOCK_PRICES_BY_DATE[invest_date.strftime(DATE_FORMAT)]
+            sale_stocks_prices = STOCK_PRICES_BY_DATE[current_date_str]
+
+            # solver
+            solver_weights = self.run_solver(FILES_5Y, slice_data=True, start_date=window_start_str,
+                                             end_date=window_end_str)
+
+            solver_returns = self.calculate_investment_return(solver_weights, investment_amount, purchase_stocks_prices,
+                                                              sale_stocks_prices)
+
+            solver_returns_all.append(solver_returns)
+
+            # uniform
+            uniform_weights = np.ones(len(STOCK_NAMES)) / len(STOCK_NAMES)
+            uniform_returns = self.calculate_investment_return(uniform_weights, investment_amount,
+                                                               purchase_stocks_prices,
+                                                               sale_stocks_prices)
+            uniform_returns_all.append(uniform_returns)
+
+            # random
+            random_weights = np.random.dirichlet(np.ones(len(STOCK_NAMES)), size=1)[0]
+            uniform_returns = self.calculate_investment_return(random_weights, investment_amount,
+                                                               purchase_stocks_prices,
+                                                               sale_stocks_prices)
+            random_returns_all.append(uniform_returns)
+
+            invest_date += timedelta(days=invest_time)
+
+        plt.plot(window_invest_locations, solver_returns_all, label='Solver')
+        plt.plot(window_invest_locations, uniform_returns_all, label='Uniform')
+        plt.plot(window_invest_locations, random_returns_all, label='Random')
+
+        plt.xlabel('date')
+        plt.ylabel('investment return')
+        plt.xticks(rotation=45, ha='right')
+        plt.title('Investment Returns by Date\n10 days invest, 510 days solver window')
+        plt.legend()
+
         plt.show()
 
 
