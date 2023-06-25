@@ -145,7 +145,7 @@ class TestOptimizerMethods(unittest.TestCase):
             # solver
             solver_weights, cov, mean_vec = self.run_solver(FILES_5Y, slice_data=True, start_date=window_start_str,
                                              end_date=window_end_str, with_cov_mean=True)
-            P = 2 * 0 * cov
+            P = 2 * 0.5 * cov
             q = (-1) * np.array(mean_vec)
             cost_solver = self.cost_function(P=P, q=q, x=solver_weights)
             solver_costs.append(cost_solver)
@@ -488,7 +488,6 @@ class TestOptimizerMethods(unittest.TestCase):
         plt.show()
 
     def test_solver_investment_return_with_update(self):
-        STOCKS_LATEST_DATE = '07/26/2019'
         invest_date = datetime.strptime(STOCKS_LATEST_DATE, DATE_FORMAT) - timedelta(days=365)
         investment_amount = 10000
         window_size_days = 510
