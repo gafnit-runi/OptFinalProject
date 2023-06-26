@@ -505,44 +505,53 @@ class TestOptimizerMethods(unittest.TestCase):
             window_end_str = invest_date.strftime(DATE_FORMAT)
             current_date_str = (invest_date + timedelta(days=invest_time)).strftime(DATE_FORMAT)
 
-            purchase_stocks_prices = STOCK_PRICES_BY_DATE[invest_date.strftime(DATE_FORMAT)]
-            sale_stocks_prices = STOCK_PRICES_BY_DATE[current_date_str]
-
             # solver
             solver_weights = self.run_solver(FILES_5Y, slice_data=True, start_date=window_start_str,
                                              end_date=window_end_str)
+            solver_returns, _, _ = self.get_investment_returns(solver_weights, invest_date=window_end_str,
+                                                               current_date=current_date_str,
+                                                               investment_amount=investment_amount)
 
-            solver_returns = self.calculate_investment_return(solver_weights, investment_amount, purchase_stocks_prices,
-                                                              sale_stocks_prices)
-
-            solver_returns_all.append(solver_returns)
+            solver_returns_all.extend(solver_returns)
 
             # uniform
             uniform_weights = np.ones(len(STOCK_NAMES)) / len(STOCK_NAMES)
-            uniform_returns = self.calculate_investment_return(uniform_weights, investment_amount,
-                                                               purchase_stocks_prices,
-                                                               sale_stocks_prices)
-            uniform_returns_all.append(uniform_returns)
+            uniform_returns, _, _ = self.get_investment_returns(uniform_weights, invest_date=window_end_str,
+                                                               current_date=current_date_str,
+                                                               investment_amount=investment_amount)
+            uniform_returns_all.extend(uniform_returns)
 
             # random
             random_weights = np.random.dirichlet(np.ones(len(STOCK_NAMES)), size=1)[0]
-            uniform_returns = self.calculate_investment_return(random_weights, investment_amount,
-                                                               purchase_stocks_prices,
-                                                               sale_stocks_prices)
-            random_returns_all.append(uniform_returns)
+            random_returns, _, _ = self.get_investment_returns(random_weights, invest_date=window_end_str,
+                                                               current_date=current_date_str,
+                                                               investment_amount=investment_amount)
+            random_returns_all.extend(random_returns)
 
             invest_date += timedelta(days=invest_time)
 
-        plt.plot(window_invest_locations, solver_returns_all, label='Solver')
-        plt.plot(window_invest_locations, uniform_returns_all, label='Uniform')
-        plt.plot(window_invest_locations, random_returns_all, label='Random')
+        invest_date = datetime.strptime(STOCKS_LATEST_DATE, DATE_FORMAT) - timedelta(days=360)
+        dates = []
+        current_date = invest_date + timedelta(days=1)
+        while current_date <= datetime.strptime(STOCKS_LATEST_DATE, DATE_FORMAT):
+            dates.append(current_date.strftime('%m/%d/%Y'))
+            current_date += timedelta(days=1)
+
+        plt.plot(dates, solver_returns_all, label='Solver')
+        plt.plot(dates, uniform_returns_all, label='Uniform')
+        plt.plot(dates, random_returns_all, label='Random')
 
         plt.xlabel('date')
         plt.ylabel('investment return')
-        plt.xticks(rotation=45, ha='right')
         plt.title('Investment Returns by Date\n10 days invest, 510 days solver window')
         plt.legend()
 
+        x_ticks = np.arange(0, len(dates), 50)
+        x_labels = [dates[i] for i in x_ticks]
+
+        plt.xticks(x_ticks, x_labels, rotation=45)
+
+        plt.tight_layout()
         plt.show()
 
 
